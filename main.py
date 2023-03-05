@@ -1,5 +1,5 @@
 from typing import List, Union, Any
-from fastapi import FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, status
 import uvicorn
 import os
 import poplib
@@ -17,6 +17,24 @@ from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from sqlalchemy.orm import Session
+
+from sql import crud, models, schema
+from sql.database import SessionLocal, engine
+
+models.Base.metadata.create_all(bind=engine)
+
+app = FastAPI()
+
+
+# Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close
+
 
 port = int(os.environ["PORT"])
 
@@ -81,7 +99,7 @@ async def main() -> BaseResponse:
 
 
 @app.post("/api/login/")
-async def login(user: User, response_model: BaseResponse):
+async def login(user: User, response_model=BaseResponse):
     pop_client_instance = pop_login(user)
     match pop_client_instance:
         case None:
@@ -91,11 +109,11 @@ async def login(user: User, response_model: BaseResponse):
             )
         case pop_client_instance:
             pop_client_instance.quit()
-            return BaseResponse(**({"data": "Successfully Authenticated"}))
+            return {"data": "Successfully Authenticated"}
 
 
 @app.post("/api/messages/")
-async def messages(user: User, response_model: dict[str, FetchMailResponse]):
+async def messages(user: User):
     pop_client_instance = pop_login(user)
     match pop_client_instance:
         case None:
@@ -117,18 +135,16 @@ async def messages(user: User, response_model: dict[str, FetchMailResponse]):
                 )
             pop_client_instance.quit()
             return {
-                "data": FetchMailResponse(
-                    **{
-                        "number_of_messages": numMsgs,
-                        "total_size": totalSize,
-                        "messages": messages,
-                    }
-                )
+                "data": {
+                    "number_of_messages": numMsgs,
+                    "total_size": totalSize,
+                    "messages": messages,
+                }
             }
 
 
 @app.post("/api/message/")
-async def message(message: Message, response_model: BaseResponse):
+async def message(message: Message):
     try:
         message_mime = MIMEMultipart()
         message_mime["From"] = message.from_addr
@@ -150,7 +166,17 @@ async def message(message: Message, response_model: BaseResponse):
             detail="Mail transfer failed",
         )
     else:
-        return BaseResponse(**{"data": "Mail transfer succeded"})
+        return {"data": "Mail transfer succeded"}
+
+
+@app.post("/api/signup/")
+async def signup(user: schema.UserCreate, db: Session = Depends(get_db)):
+    crud.create_user(db, user)
+
+
+@app.post("/api/users/")
+async def get_users(user: schema.UserCreate, db: Session = Depends(get_db)):
+    return crud.get_users(db)
 
 
 uvicorn.run(app, host="0.0.0.0", port=port)
