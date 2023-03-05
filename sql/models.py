@@ -19,14 +19,13 @@ class User(Base):
     pop_password = Column(String, default=password)
     pop_port = Column(Integer, default=110)
     pop_host = Column(String, default=host)
-    mails = relationship("Mail", back_populates="owner")
 
 
 class Mail(Base):
     __tablename__ = "mails"
 
     id = Column(Integer, index=True)
-    message_id = Column(String)
+    message_id = Column(String, primary_key=True)
     from_name = Column(String)
     from_id = Column(String)
     subject = Column(String)
@@ -36,4 +35,3 @@ class Mail(Base):
     date = Column(DateTime)
     owner_id = Column(Integer, ForeignKey("users.id"))
     to_addresses = Column(String)
-    owner = relationship("User", back_populates="mails")

@@ -36,7 +36,7 @@ def get_db():
         db.close
 
 
-port = int(os.environ["PORT"])
+port = int(os.getenv("PORT", "8000"))
 
 app = FastAPI()
 app.add_middleware(
@@ -78,7 +78,6 @@ class FetchMailResponse(BaseModel):
 def pop_login(user: User):
     try:
         pop_client_instance = poplib.POP3_SSL("box.0xparc.space", port=995)
-        print(user)
         pop_client_instance.user(user.username)
         pop_client_instance.pass_(user.password)
     except:
@@ -127,9 +126,6 @@ async def messages(user: User):
 
             for i in range(1, numMsgs + 1):
                 (header, lines, octets) = pop_client_instance.retr(i)
-                print(
-                    clean_msg(lines),
-                )
                 messages.append(
                     clean_msg(lines),
                 )
@@ -179,4 +175,4 @@ async def get_users(user: schema.UserCreate, db: Session = Depends(get_db)):
     return crud.get_users(db)
 
 
-uvicorn.run(app, host="0.0.0.0", port=port)
+# uvicorn.run(app, host="0.0.0.0", port=port)

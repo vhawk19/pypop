@@ -60,4 +60,4 @@ def read_mail_with_id(db: Session, message_id: str):
 
 
 def get_user_mails(db: Session, user_id: int):
-    db.query(models.User).filter(models.Mail.owner == user_id)
+    db.query(models.User).filter(models.Mail.owner_id == user_id)
